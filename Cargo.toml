@@ -1,0 +1,44 @@
+[package]
+name = "ArkForzaWidgets"
+version = "0.1.0"
+edition = "2021"
+description = "Forza Horizon 6 telemetry HUD overlay"
+license = "Zlib"
+
+[dependencies]
+# 配布対象は Windows のみ
+eframe = { version = "0.29", default-features = false, features = [
+    "wgpu",          # GPU 描画 (低遅延・高 FPS)
+    "default_fonts",
+] }
+egui = "0.29"
+egui_plot = "0.29"
+crossbeam-channel = "0.5"
+byteorder = "1.5"
+anyhow = "1"
+log = "0.4"
+env_logger = "0.11"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+raw-window-handle = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_HiDpi",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading",
+    "Win32_System_ProcessStatus",
+] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# Windows でコンソールウィンドウを表示しないため
+[package.metadata.winres]
+# (将来 winres でアイコン埋め込み時に利用)
