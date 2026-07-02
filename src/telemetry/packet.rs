@@ -45,6 +45,10 @@ pub struct Telemetry {
     pub clutch: f32,
     pub handbrake: f32,
     pub steer: f32,
+    /// 正規化ドライビングライン位置 (S8: -127..=127)
+    pub normalized_driving_line: i8,
+    /// 正規化 AI ブレーキ差分 (S8: -127..=127)
+    pub normalized_ai_brake_difference: i8,
     pub gear: u8,
 
     /// 車両識別 ID (Sled offset 212)。タイトル内で車種ごとにユニーク。
@@ -146,6 +150,8 @@ pub fn parse(buf: &[u8]) -> Result<Telemetry> {
     let handbrake = buf[d + 74] as f32 / 255.0;
     let gear = buf[d + 75];
     let steer = (buf[d + 76] as i8) as f32 / 127.0;
+    let normalized_driving_line = buf[d + 77] as i8;
+    let normalized_ai_brake_difference = buf[d + 78] as i8;
 
     Ok(Telemetry {
         is_race_on,
@@ -164,6 +170,8 @@ pub fn parse(buf: &[u8]) -> Result<Telemetry> {
         clutch,
         handbrake,
         steer,
+        normalized_driving_line,
+        normalized_ai_brake_difference,
         gear,
         car_ordinal,
         car_performance_index,

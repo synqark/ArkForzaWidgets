@@ -22,9 +22,14 @@ use crate::ui::{WidgetFrameStyle, WIDGETS};
 
 const FOREGROUND_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
-/// ウィジェットのスケール基準となるゲーム縦解像度 (px)。
-/// この高さ (2160) のとき scale=1.0 が等倍、1080 のとき 0.5 倍に縮小される。
-const WIDGET_BASELINE_HEIGHT: f32 = 2160.0;
+/// ウィジェットのスケール基準となる「論理ポイント換算後」の縦解像度。
+///
+/// ウィジェットが画面に占める割合は `intrinsic * scale / WIDGET_BASELINE_HEIGHT` で一定になる
+/// (物理解像度・DPI に依存しない)。値を下げるほどウィジェットは相対的に大きくなる。
+///
+/// 1440 は「修正前に 4K (150% DPI ≒ ppp 1.5) で表示されていたサイズ」に合わせた基準。
+/// = 2160 / 1.5。4K モニタの表示スケールが 150% 以外なら `2160 / 実 DPI 倍率` に調整する。
+const WIDGET_BASELINE_HEIGHT: f32 = 1440.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Config {
@@ -365,11 +370,6 @@ impl eframe::App for App {
             )
         };
 
-        // ウィジェットの解像度スケール: ゲーム縦解像度を基準 (2160) に対する比率。
-        // 例) 2160 → 1.0、1080 → 0.5。各ウィジェットの scale にこの係数を掛ける。
-        // `resolution` はこの時点ではまだ物理ピクセル (ppp 除算前) なので縦ピクセル数で割る。
-        let res_scale = (resolution.1 / WIDGET_BASELINE_HEIGHT).max(0.05);
-
         // ゲーム解像度/原点は物理ピクセル (GetClientRect/ClientToScreen)。
         // 一方 egui のビューポート配置 (OuterPosition/InnerSize) と Area 座標は
         // 論理ポイント単位で、egui-winit が pixels_per_point を掛けて物理化する。
@@ -381,6 +381,16 @@ impl eframe::App for App {
         let ppp = ctx.pixels_per_point().max(0.1);
         let resolution = (resolution.0 / ppp, resolution.1 / ppp);
         let origin = (origin.0 as f32 / ppp, origin.1 as f32 / ppp);
+
+        // ウィジェットの解像度スケール: 基準 (2160) に対する縦解像度の比率。
+        // 例) 2160 → 1.0、1080 → 0.5。各ウィジェットの scale にこの係数を掛ける。
+        //
+        // 重要: ここは **ppp 除算後の論理解像度** (中心位置の算出と同じ基準) から計算する。
+        // egui はウィジェットの論理ポイントサイズに ppp を掛けて物理化するため、
+        // 論理解像度から係数を作れば「ウィジェットが画面に占める割合」は ppp・物理解像度に
+        // 依存せず一定になる。物理ピクセル (ppp 除算前) から計算すると、描画時の ppp 乗算と
+        // 二重にかかり、4K↔FHD で倍率がズレて低解像度側が過剰に小さくなる。
+        let res_scale = (resolution.1 / WIDGET_BASELINE_HEIGHT).max(0.05);
 
         // 表示中ウィジェットの矩形を集めて union を取る
         let mut bbox: Option<egui::Rect> = None;

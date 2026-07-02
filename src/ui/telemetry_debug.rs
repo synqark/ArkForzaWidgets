@@ -46,6 +46,22 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
         ("clutch", format!("{:.4}", t.clutch)),
         ("handbrake", format!("{:.4}", t.handbrake)),
         ("steer", format!("{:.4}", t.steer)),
+        (
+            "NormalizedDrivingLine",
+            format!(
+                "{} ({:+.4})",
+                t.normalized_driving_line,
+                t.normalized_driving_line as f32 / 127.0
+            ),
+        ),
+        (
+            "NormalizedAIBrakeDifference",
+            format!(
+                "{} ({:+.4})",
+                t.normalized_ai_brake_difference,
+                t.normalized_ai_brake_difference as f32 / 127.0
+            ),
+        ),
         ("gear", gear_str),
         // --- Vehicle ID ---
         ("car_ordinal", format!("{}", t.car_ordinal)),
