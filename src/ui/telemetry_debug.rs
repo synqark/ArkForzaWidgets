@@ -72,6 +72,12 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
         ("tire_slip[RL]", format!("{:.4}", t.tire_slip[2])),
         ("tire_slip[RR]", format!("{:.4}", t.tire_slip[3])),
         ("max_tire_slip", format!("{:.4}", t.max_tire_slip())),
+        // --- Tire slip angle ---
+        ("slip_angle[FL]", format!("{:+.4}", t.tire_slip_angle[0])),
+        ("slip_angle[FR]", format!("{:+.4}", t.tire_slip_angle[1])),
+        ("slip_angle[RL]", format!("{:+.4}", t.tire_slip_angle[2])),
+        ("slip_angle[RR]", format!("{:+.4}", t.tire_slip_angle[3])),
+        ("g_bar_max_g", format!("{:.1}", state.g_bar_max_g)),
         // --- App-computed ---
         (
             "last_engine_max_rpm",

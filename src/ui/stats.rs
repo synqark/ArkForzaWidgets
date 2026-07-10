@@ -374,9 +374,8 @@ fn draw_status(ui: &Ui, rect: Rect, state: &AppState, s: f32) {
             Color32::from_white_alpha(180),
         )
     });
-    let badge_galley = ui.fonts(|f| {
-        f.layout_no_wrap(badge_text.to_string(), body_font.clone(), badge_color)
-    });
+    let badge_galley =
+        ui.fonts(|f| f.layout_no_wrap(badge_text.to_string(), body_font.clone(), badge_color));
     let label_w = label_galley.size().x;
     let badge_w = badge_galley.size().x;
     let status_left = rect.right() - (label_w + badge_w);

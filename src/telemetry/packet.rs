@@ -56,8 +56,14 @@ pub struct Telemetry {
     /// PI (Performance Index, Sled offset 220)。同一車でもチューニングで変わる。
     pub car_performance_index: i32,
 
-    /// 4 輪の "combined slip" (Sled 部 offset 192/196/200/204)。
+    /// 4 輪の正規化スリップアングル (Sled 部 offset 164/168/172/176)。
+    /// 0 = 100% グリップ、|1.0| 超で横方向グリップ喪失の目安。符号は滑り方向。
+    /// 順序は FL / FR / RL / RR。
+    pub tire_slip_angle: [f32; 4],
+
+    /// 4 輪の "combined slip" (Sled 部 offset 180/184/188/192)。
     /// 1.0 を超えるとタイヤがグリップを失っている目安。
+    /// 順序は FL / FR / RL / RR。
     pub tire_slip: [f32; 4],
 }
 
@@ -124,12 +130,20 @@ pub fn parse(buf: &[u8]) -> Result<Telemetry> {
     let accel_y = LE::read_f32(&buf[24..28]);
     let accel_z = LE::read_f32(&buf[28..32]);
 
-    // Tire combined slip (Sled offsets 192/196/200/204)
+    // Tire normalized slip angle (Sled offsets 164/168/172/176)
+    let tire_slip_angle = [
+        LE::read_f32(&buf[164..168]),
+        LE::read_f32(&buf[168..172]),
+        LE::read_f32(&buf[172..176]),
+        LE::read_f32(&buf[176..180]),
+    ];
+
+    // Tire combined slip (Sled offsets 180/184/188/192)
     let tire_slip = [
+        LE::read_f32(&buf[180..184]),
+        LE::read_f32(&buf[184..188]),
+        LE::read_f32(&buf[188..192]),
         LE::read_f32(&buf[192..196]),
-        LE::read_f32(&buf[196..200]),
-        LE::read_f32(&buf[200..204]),
-        LE::read_f32(&buf[204..208]),
     ];
 
     // 車両識別 (Sled offsets: CarOrdinal=212, CarPerformanceIndex=220)
@@ -175,6 +189,7 @@ pub fn parse(buf: &[u8]) -> Result<Telemetry> {
         gear,
         car_ordinal,
         car_performance_index,
+        tire_slip_angle,
         tire_slip,
     })
 }

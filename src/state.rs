@@ -63,6 +63,12 @@ pub struct Layout {
     pub gear_display: LayoutItem,
     #[serde(default = "Layout::default_speed_display")]
     pub speed_display: LayoutItem,
+    #[serde(default = "Layout::default_g_bar")]
+    pub g_bar: LayoutItem,
+    #[serde(default = "Layout::default_slip_front")]
+    pub slip_front: LayoutItem,
+    #[serde(default = "Layout::default_slip_rear")]
+    pub slip_rear: LayoutItem,
     #[serde(default = "Layout::default_telemetry_debug")]
     pub telemetry_debug: LayoutItem,
 }
@@ -110,6 +116,27 @@ impl Layout {
             scale: [1.5, 1.5],
         }
     }
+    fn default_g_bar() -> LayoutItem {
+        LayoutItem {
+            visible: false,
+            pos: [0.5, 0.25],
+            scale: [1.0, 1.0],
+        }
+    }
+    fn default_slip_front() -> LayoutItem {
+        LayoutItem {
+            visible: false,
+            pos: [0.5, 0.30000001192092896],
+            scale: [1.0, 1.0],
+        }
+    }
+    fn default_slip_rear() -> LayoutItem {
+        LayoutItem {
+            visible: true,
+            pos: [0.5, 0.75],
+            scale: [1.0, 1.0],
+        }
+    }
     fn default_telemetry_debug() -> LayoutItem {
         LayoutItem {
             visible: false,
@@ -128,6 +155,9 @@ impl Default for Layout {
             brk_text: Self::default_brk_text(),
             gear_display: Self::default_gear_display(),
             speed_display: Self::default_speed_display(),
+            g_bar: Self::default_g_bar(),
+            slip_front: Self::default_slip_front(),
+            slip_rear: Self::default_slip_rear(),
             telemetry_debug: Self::default_telemetry_debug(),
         }
     }
@@ -464,6 +494,11 @@ pub struct AppState {
     pub accel_ema: [f32; 3],
     /// accel_ema を初期化済みか (最初のサンプルは生値で seed する)
     accel_ema_init: bool,
+    /// 横 G バーウィジェットの表示レンジ上限 (G)。設定パネルから変更可能。
+    pub g_bar_max_g: f32,
+    /// スリップインジケーター: 内側方向のスリップを 0 とみなすか (L側は＋の値のみ、R側は－の値のみ表示)。
+    /// 既定 ON。設定パネルから変更可能。
+    pub ignore_inward_slip: bool,
 }
 
 /// レブリミット張り付き検出: 全開時の直近何サンプルを見るか
@@ -485,6 +520,9 @@ const GEAR_RATIO_ALPHA: f32 = 0.25;
 /// 加速度成分 EMA のスムージング係数 (0..1、小さいほど強い平滑化)。
 /// ゲーム内 G メーターのダンパー挙動に近づけるための値。
 const ACCEL_EMA_ALPHA: f32 = 0.15;
+
+/// 横 G バーウィジェットの既定表示レンジ (G)。
+const DEFAULT_G_BAR_MAX_G: f32 = 4.0;
 
 /// 重力加速度 (m/s²)
 const GRAVITY: f32 = 9.806_65;
@@ -521,6 +559,8 @@ impl Default for AppState {
             last_engine_max_rpm: 0.0,
             accel_ema: [0.0; 3],
             accel_ema_init: false,
+            g_bar_max_g: DEFAULT_G_BAR_MAX_G,
+            ignore_inward_slip: true,
         }
     }
 }
@@ -698,6 +738,7 @@ impl AppState {
             self.accel_ema = raw;
             self.accel_ema_init = true;
         }
+
         self.latest = t;
         // 非ゼロの車識別を保持 (ポーズ中に 0 になっても直前の車を覚えておく)
         if t.car_ordinal != 0 {

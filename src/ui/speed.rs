@@ -82,7 +82,7 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
     // seam_x: 整数部の右端 = 小数部の左端
     let seam_x = cx + (int_w - dec_w) / 2.0;
 
-    // 単位ラベル: 小数部の真上に配置 
+    // 単位ラベル: 小数部の真上に配置
     let label_x = seam_x + dec_w / 2.0;
     let label_x_pad = 2.0 * s; // ラベルと小数部の間に少し余白を入れる
     let label_y = nums_y - dec_size - smalltext_pad_y - 2.0 * s;

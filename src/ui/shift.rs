@@ -76,10 +76,10 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
     let span = (hi - lo).max(1.0);
 
     // レイアウト定数
-    let pad = 6.0 * s;       // 外側の余白
-    let tri_h = 10.0 * s;    // 三角形の高さ
-    let label_w = 36.0 * s;  // 「SPD」「RPM」ラベルの幅
-    let gap = 5.0 * s;       // SPDバーとRPMバーの隙間
+    let pad = 6.0 * s; // 外側の余白
+    let tri_h = 10.0 * s; // 三角形の高さ
+    let label_w = 36.0 * s; // 「SPD」「RPM」ラベルの幅
+    let gap = 5.0 * s; // SPDバーとRPMバーの隙間
     let bar_h = (size.y - pad * 2.0 - tri_h * 2.0 - gap) / 2.0;
 
     // SPDバーとRPMバーの矩形 (左右は三角形用スペースを除き、label_w 分を外側ラベル領域に)
@@ -234,11 +234,17 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
     let sx = to_x(shift_up);
     draw_triangles(sx);
     painter.line_segment(
-        [egui::pos2(sx, spd_bar.top()), egui::pos2(sx, spd_bar.bottom())],
+        [
+            egui::pos2(sx, spd_bar.top()),
+            egui::pos2(sx, spd_bar.bottom()),
+        ],
         Stroke::new((3.0 * s).max(2.0), Color32::WHITE),
     );
     painter.line_segment(
-        [egui::pos2(sx, rpm_bar.top()), egui::pos2(sx, rpm_bar.bottom())],
+        [
+            egui::pos2(sx, rpm_bar.top()),
+            egui::pos2(sx, rpm_bar.bottom()),
+        ],
         Stroke::new((3.0 * s).max(2.0), Color32::WHITE),
     );
 

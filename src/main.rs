@@ -1,4 +1,7 @@
-#![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 
 mod platform;
 mod state;
@@ -63,6 +66,12 @@ struct Config {
     /// 速度ウィジェットの単位: true = km/h, false = mph
     #[serde(default = "default_true")]
     speed_unit_kmh: bool,
+    /// 横 G バーウィジェットの表示レンジ上限 (G)
+    #[serde(default = "default_g_bar_max_g")]
+    g_bar_max_g: f32,
+    /// スリップインジケーター: 内側方向のスリップを 0 とみなすか
+    #[serde(default = "default_true")]
+    ignore_inward_slip: bool,
     /// 受信した生パケットを他ツールへ転送するか
     #[serde(default)]
     forward_enabled: bool,
@@ -92,6 +101,9 @@ fn default_input_text_pad() -> f32 {
 fn default_forward_target() -> String {
     "127.0.0.1:5300".to_string()
 }
+fn default_g_bar_max_g() -> f32 {
+    4.0
+}
 
 impl Default for Config {
     fn default() -> Self {
@@ -106,6 +118,8 @@ impl Default for Config {
             input_text_bg_alpha: default_input_text_bg_alpha(),
             input_text_pad: default_input_text_pad(),
             speed_unit_kmh: true,
+            g_bar_max_g: default_g_bar_max_g(),
+            ignore_inward_slip: true,
             forward_enabled: false,
             forward_target: default_forward_target(),
         }
@@ -145,6 +159,8 @@ pub fn save_config(
     input_text_bg_alpha: u8,
     input_text_pad: f32,
     speed_unit_kmh: bool,
+    g_bar_max_g: f32,
+    ignore_inward_slip: bool,
     udp_port: u16,
     forward_enabled: bool,
     forward_target: &str,
@@ -160,6 +176,8 @@ pub fn save_config(
     cfg.input_text_bg_alpha = input_text_bg_alpha;
     cfg.input_text_pad = input_text_pad;
     cfg.speed_unit_kmh = speed_unit_kmh;
+    cfg.g_bar_max_g = g_bar_max_g;
+    cfg.ignore_inward_slip = ignore_inward_slip;
     cfg.bind = format!("0.0.0.0:{udp_port}");
     cfg.forward_enabled = forward_enabled;
     cfg.forward_target = forward_target.to_string();
@@ -360,14 +378,8 @@ impl eframe::App for App {
             // オーバーレイを表示する (位置を見ながら調整できるようにするため)。
             // overlay_enabled=false だけは尊重する。
             let settings_focused = ctx.input(|i| i.focused);
-            let should_show = st.should_show_overlay()
-                || (settings_focused && st.overlay_enabled);
-            (
-                should_show,
-                st.layout.clone(),
-                resolution,
-                st.game_origin,
-            )
+            let should_show = st.should_show_overlay() || (settings_focused && st.overlay_enabled);
+            (should_show, st.layout.clone(), resolution, st.game_origin)
         };
 
         // ゲーム解像度/原点は物理ピクセル (GetClientRect/ClientToScreen)。
@@ -629,6 +641,8 @@ fn main() -> Result<()> {
         s.input_text_bg_alpha = cfg.input_text_bg_alpha;
         s.input_text_pad = cfg.input_text_pad;
         s.speed_unit_kmh = cfg.speed_unit_kmh;
+        s.g_bar_max_g = cfg.g_bar_max_g;
+        s.ignore_inward_slip = cfg.ignore_inward_slip;
         s.udp_port = cfg
             .bind
             .rsplit(':')

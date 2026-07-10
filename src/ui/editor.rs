@@ -57,6 +57,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState, config_path: &Path, profiles_path
                     state.input_text_bg_alpha,
                     state.input_text_pad,
                     state.speed_unit_kmh,
+                    state.g_bar_max_g,
+                    state.ignore_inward_slip,
                     state.udp_port,
                     state.forward_enabled,
                     &state.forward_target,
@@ -195,7 +197,12 @@ fn gpu_section(ui: &mut Ui, state: &mut AppState) {
         );
     });
     // 転送先が不正なら警告を出す (有効時のみ)。
-    if state.forward_enabled && state.forward_target.trim().parse::<std::net::SocketAddr>().is_err()
+    if state.forward_enabled
+        && state
+            .forward_target
+            .trim()
+            .parse::<std::net::SocketAddr>()
+            .is_err()
     {
         ui.label(
             egui::RichText::new("Invalid address. Use IP:Port (e.g. 127.0.0.1:5300).")
@@ -632,6 +639,26 @@ fn widget_row(ui: &mut Ui, meta: &WidgetSpec, state: &mut crate::state::AppState
                 ui.selectable_value(&mut state.speed_unit_kmh, true, "km/h");
                 ui.selectable_value(&mut state.speed_unit_kmh, false, "mph");
             });
+        }
+        // 横 G バーウィジェット: 表示レンジ (最大 G)
+        if meta.id == "g_bar" {
+            ui.add_space(2.0);
+            ui.horizontal(|ui| {
+                ui.label("Max G");
+                ui.add(
+                    egui::Slider::new(&mut state.g_bar_max_g, 1.0..=8.0)
+                        .fixed_decimals(1)
+                        .suffix(" G"),
+                );
+            });
+        }
+        // スリップインジケーター: 内側方向スリップを無視するオプション
+        if meta.id == "slip_front" || meta.id == "slip_rear" {
+            ui.add_space(2.0);
+            ui.checkbox(
+                &mut state.ignore_inward_slip,
+                "Ignore inward-direction slip (L: + only, R: - only)",
+            );
         }
     });
 }

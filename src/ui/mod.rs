@@ -12,9 +12,11 @@ use crate::state::{AppState, Layout, LayoutItem};
 
 pub mod editor;
 pub mod fonts;
+pub mod g_bar;
 pub mod gear;
 pub mod input_text;
 pub mod shift;
+pub mod slip_indicator;
 pub mod speed;
 pub mod stats;
 pub mod telemetry_debug;
@@ -99,6 +101,33 @@ pub const WIDGETS: &[WidgetSpec] = &[
         get_mut: |l| &mut l.brk_text,
         get: |l| &l.brk_text,
         paint: input_text::paint_brk,
+        frame_style: WidgetFrameStyle::Transparent,
+    },
+    WidgetSpec {
+        id: "g_bar",
+        label: "Lateral G bar",
+        intrinsic: g_bar::INTRINSIC_SIZE,
+        get_mut: |l| &mut l.g_bar,
+        get: |l| &l.g_bar,
+        paint: g_bar::paint,
+        frame_style: WidgetFrameStyle::Transparent,
+    },
+    WidgetSpec {
+        id: "slip_front",
+        label: "Front slip indicator",
+        intrinsic: slip_indicator::INTRINSIC_SIZE,
+        get_mut: |l| &mut l.slip_front,
+        get: |l| &l.slip_front,
+        paint: slip_indicator::paint_front,
+        frame_style: WidgetFrameStyle::Transparent,
+    },
+    WidgetSpec {
+        id: "slip_rear",
+        label: "Rear slip indicator",
+        intrinsic: slip_indicator::INTRINSIC_SIZE,
+        get_mut: |l| &mut l.slip_rear,
+        get: |l| &l.slip_rear,
+        paint: slip_indicator::paint_rear,
         frame_style: WidgetFrameStyle::Transparent,
     },
     WidgetSpec {
