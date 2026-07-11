@@ -2,28 +2,44 @@
 
 ![ArkForzaWidgets スクリーンショット](screenshot.png)
 
-ArkForzaWidgets は、Forza Horizon 6 が UDP で出力するテレメトリ (Data Out) を受信し、ゲーム画面上に半透明オーバーレイで補助情報を表示する Windows 向けデスクトップアプリです。
+ArkForzaWidgets は、Forza シリーズが UDP で出力するテレメトリ (Data Out) を受信し、  
+ゲーム画面上にオーバーレイで補助情報を表示する Windows 向けデスクトップアプリです。
 
-メインウィンドウは設定パネルとして機能し、オーバーレイは最前面・クリックスルーの透明ウィンドウとして描画されます。ゲーム PC と同一 PC 上で `127.0.0.1` 受信することを前提としています。
+レースに必要な情報を任意の位置に簡潔に表示し、  
+目線を大きく逸らすことなく、車両コントロールしやすいHUDを構築できます。
 
 ## ダウンロード＆インストール
+
+### ツールの入手・起動
 
 [リリースページ](https://github.com/synqark/ArkForzaWidgets/releases) の最上部にある `Assets` から、  
 最新の `ArkForzaWidgets.exe` をダウンロードできます。  
 任意のディレクトリにフォルダを作成し、ArkForzaWidgets.exe を配置して起動してください。  
-![Downloadリンク](downloadlink.png)
+![Downloadリンク](downloadlink.png)  
 
-## 主な機能
+### Forza 側設定
 
-- 表示中ウィジェットを 1 枚にまとめた透明オーバーレイ (最前面・クリックスルー) で HUD を描画
-- 速度 / RPM / ギア / スロットル / ブレーキなどの数値表示
-- シフトインジケータ表示
-- 横 G バー表示
-- 前後タイヤのスリップインジケータ表示
-- 設定パネル内のダイノグラフ (RPM ごとの Power / Torque ピークホールドとパワーバンド帯)
-- 車ごとのギア比 / パワーカーブを `profiles.toml` に保存・読み出し
-- 受信した UDP パケットの別ツールへの転送
-- グローバルホットキーでプロファイル保存 / クリア
+ゲーム内の `設定 -> 画面表示とゲームプレイ -> テレメトリ` を開き、以下のように設定してください。  
+(Forza Horizon 6 の場合。出力先PCやポートが異なる場合は適宜変更)  
+![FH6設定](ingamesetting.png)
+
+
+## オーバーレイウィジェット
+
+| ラベル | 内容 |  |
+|---|---|---|
+| Stats | 加速度 G やギア比などの統計値 | |
+| Shift indicator | シフトインジケータ | |
+| Gear | ギア数値の大型表示 | |
+| Speed | 速度 (km/h または mph) | |
+| ACC (text) | アクセル入力 0..=100 のテキスト | |
+| BRK (text) | ブレーキ入力 0..=100 のテキスト | |
+| Lateral G bar | 横 G を左右に伸びるバーで表示 | ※デフォルト非表示 |
+| Front slip indicator | 前輪のスリップ表示 | ※デフォルト非表示 |
+| Rear slip indicator | 後輪のスリップ表示 |
+| Telemetry Debug (all fields) | 全フィールドのデバッグ表示 | ※デフォルト非表示 |
+
+各ウィジェットは設定パネルから表示 / 非表示、位置、スケールを個別に調整できます。
 
 ## シフトインジケーターを使用するには  
 
@@ -32,28 +48,22 @@ ArkForzaWidgets は、Forza Horizon 6 が UDP で出力するテレメトリ (Da
 
 [![シフトインジケーター用ダイノ/ギア比記録手順](https://img.youtube.com/vi/N6-YM7tbBmo/0.jpg)](https://youtu.be/N6-YM7tbBmo)
 
-## オーバーレイウィジェット
+## その他機能
 
-| ラベル | 内容 |
-|---|---|
-| Stats | 加速度 G やギア比などの統計値 |
-| Shift indicator | シフトインジケータ |
-| Gear | ギア数値の大型表示 |
-| Speed | 速度 (km/h または mph) |
-| ACC (text) | アクセル入力 0..=100 のテキスト |
-| BRK (text) | ブレーキ入力 0..=100 のテキスト |
-| Lateral G bar | 横 G を左右に伸びるバーで表示 |
-| Front slip indicator | 前輪のスリップ表示 |
-| Rear slip indicator | 後輪のスリップ表示 |
-| Telemetry Debug (all fields) | 全フィールドのデバッグ表示 (既定非表示) |
-
-各ウィジェットは設定パネルから表示 / 非表示、位置、スケールを個別に調整できます。
+- テレメトリデータリレー機能  
+  Forzaから受信したパケットを異なるポートに転送し、他のツールで利用できます。  
+- kph/mph 切り替え
+- GPU切替機能  
+  描画に問題がある場合、解決手段としてGPU切替で改善することがあります。
 
 ## 動作要件
 
 - Windows 10 / 11 (x64)
 - Forza Horizon 6
 - Rust 1.96.0 以降 (ソースからビルドする場合)
+
+
+# 開発情報
 
 ## 技術スタック
 
@@ -78,19 +88,6 @@ cargo build --release
 ```
 
 生成物は `target/release/ArkForzaWidgets.exe` です。
-
-## Forza 側設定
-
-ゲーム内の `Settings -> HUD and Gameplay -> Data Out` を開き、以下を設定してください。
-
-| 項目 | 値 |
-|---|---|
-| Data Out | ON |
-| Data Out IP Address | `127.0.0.1` |
-| Data Out IP Port | `35530` |
-| Data Out Packet Format | `Car Dash` |
-
-`Data Out IP Port` は `config.toml` の `bind` と一致させてください。
 
 ## 設定ファイル
 
