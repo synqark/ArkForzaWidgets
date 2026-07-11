@@ -6,6 +6,13 @@ ArkForzaWidgets は、Forza Horizon 6 が UDP で出力するテレメトリ (Da
 
 メインウィンドウは設定パネルとして機能し、オーバーレイは最前面・クリックスルーの透明ウィンドウとして描画されます。ゲーム PC と同一 PC 上で `127.0.0.1` 受信することを前提としています。
 
+## ダウンロード＆インストール
+
+[リリースページ](https://github.com/synqark/ArkForzaWidgets/releases) の最上部にある `Assets` から、  
+最新の `ArkForzaWidgets.exe` をダウンロードできます。  
+任意のディレクトリにフォルダを作成し、ArkForzaWidgets.exe を配置して起動してください。  
+![Downloadリンク](downloadlink.png)
+
 ## 主な機能
 
 - 表示中ウィジェットを 1 枚にまとめた透明オーバーレイ (最前面・クリックスルー) で HUD を描画
