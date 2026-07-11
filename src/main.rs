@@ -359,7 +359,7 @@ impl eframe::App for App {
         // --- メインウィンドウ = 設定パネル ---
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut st = self.state.lock().unwrap();
-            ui::editor::show(ui, &mut st, &self.config_path, &self.profiles_path);
+            ui::editor::show(ui, &mut st, &self.config_path);
         });
 
         // --- 表示中ウィジェットを 1 枚の透明ウィンドウで覆う (外接矩形 = bbox) ---

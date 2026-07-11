@@ -1,3 +1,7 @@
+# For English users
+
+This README is written in Japanese. For the English version, see [README_en.md](README_en.md).
+
 # ArkForzaWidgets
 
 ![ArkForzaWidgets スクリーンショット](screenshot.png)

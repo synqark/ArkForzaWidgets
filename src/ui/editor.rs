@@ -18,10 +18,10 @@ use crate::ui::{WidgetSpec, WIDGETS};
 ///
 /// レイアウト:
 /// - 1 段目 (内容ぶんの最小高さ): 左 = Overlay、右 = GPU
-/// - 2 段目: Car Profile (左列 = Car Ordinal..Rev limit、中央列 = ギア比、右列 = Dyno 状況..スライダー)
+/// - 2 段目: Car Profile (左列 = Car Ordinal..Rev limit、右列 = ギア比)
 /// - 3 段目以降 (残り全部): Widgets (ヘッダ右端に Save/Reset、2 列グリッド、あふれたらスクロール)
-pub fn show(ui: &mut Ui, state: &mut AppState, config_path: &Path, profiles_path: &Path) {
-    // 設定ウィンドウがフォーカスされていないとき (= ゲームをプレイ中) は、
+pub fn show(ui: &mut Ui, state: &mut AppState, config_path: &Path) {
+    // 設定ウィンドウがフォーカスされていないとき (= ゲームをプレイ中で設定ウィンドウが非フォーカス) は、
     // 重い mini Dyno グラフの再構築をスキップして 1 フレームのコストを下げる。
     let focused = ui.ctx().input(|i| i.focused);
 
@@ -35,7 +35,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, config_path: &Path, profiles_path
     ui.separator();
 
     // --- 2 段目: Car Profile ---
-    car_profile_panel(ui, state, profiles_path, focused);
+    car_profile_panel(ui, state, focused);
 
     ui.add_space(6.0);
     ui.separator();
@@ -224,7 +224,7 @@ fn gpu_section(ui: &mut Ui, state: &mut AppState) {
 }
 
 /// 右半分: 現在の車 (CarOrdinal / PI) ごとの Dyno/パワーバンドプロファイル管理。
-fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, focused: bool) {
+fn car_profile_panel(ui: &mut Ui, state: &mut AppState, focused: bool) {
     ui.heading("Car Profile");
     ui.add_space(4.0);
 
@@ -239,16 +239,10 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
     };
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-        let saved = state.profiles.contains_key(&key);
+        // パワーバンドのハイライト閾値は固定 95% (以前は Settings でスライダー編集可能だった)
+        const BAND_RATIO: f32 = 0.95;
 
-        // 編集中のパワーバンド閾値 (グラフ・スライダー共通)
-        let ratio = state
-            .profiles
-            .get(&key)
-            .map(|p| p.band_ratio)
-            .unwrap_or(state.band_ratio);
-
-        ui.columns(3, |cols| {
+        ui.columns(2, |cols| {
             // ===== 左列: Car Ordinal .. Rev limit =====
             let ui = &mut cols[0];
             ui.label(format!("Car Ordinal: {}", state.last_car_ordinal));
@@ -264,13 +258,13 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
                 (
                     p.power_series(),
                     p.torque_series(),
-                    p.power_band_with(ratio),
+                    p.power_band_with(BAND_RATIO),
                 )
             } else {
                 (
                     state.dyno.power_series(),
                     state.dyno.torque_series(),
-                    state.dyno.power_band(ratio),
+                    state.dyno.power_band(BAND_RATIO),
                 )
             };
             let x_max = if state.latest.engine_max_rpm > 0.0 {
@@ -317,7 +311,7 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
                     .color(Color32::from_white_alpha(160)),
             );
 
-            // ===== 中央列: ギアごとの減速比 (rpm/車速) と最適シフト RPM =====
+            // ===== 右列: ギアごとの減速比 (rpm/車速) と最適シフト RPM =====
             let ui = &mut cols[1];
             ui.label(
                 egui::RichText::new(format!("Gear ratios ({})", state.gear_ratio_unit_suffix()))
@@ -353,99 +347,6 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
                         .size(11.0)
                         .color(Color32::from_white_alpha(130)),
                 );
-            }
-
-            // ===== 右列: Dyno 保存状況 .. スライダー =====
-            let ui = &mut cols[2];
-            if saved {
-                ui.label(
-                    egui::RichText::new("● Saved profile in use")
-                        .size(12.0)
-                        .color(Color32::from_rgb(120, 220, 120)),
-                );
-            } else {
-                ui.label(
-                    egui::RichText::new("○ No saved profile (recording live)")
-                        .size(12.0)
-                        .color(Color32::from_white_alpha(150)),
-                );
-            }
-
-            ui.add_space(4.0);
-
-            // --- Dyno peak の保存状況 ---
-            let live_points = state.dyno.has_data();
-            let status = if saved {
-                "Dyno peaks: saved".to_string()
-            } else if live_points {
-                "Dyno peaks: recording…".to_string()
-            } else {
-                "Dyno peaks: no data yet".to_string()
-            };
-            ui.label(egui::RichText::new(status).size(11.0));
-
-            ui.horizontal(|ui| {
-                let save_enabled = saved || live_points;
-                if ui
-                    .add_enabled(save_enabled, egui::Button::new("💾 Save dyno"))
-                    .clicked()
-                {
-                    state.save_current_profile();
-                    persist_profiles(state, profiles_path);
-                }
-                if saved && ui.button("🗑 Delete").clicked() {
-                    state.delete_current_profile();
-                    persist_profiles(state, profiles_path);
-                }
-            });
-
-            ui.separator();
-
-            // --- パワーバンド閾値スライダー ---
-            // 保存済みならプロファイルの値を、未保存なら作業値を編集する。
-            ui.label("Power band threshold");
-            let mut ratio = ratio;
-            let resp = ui.add(
-                egui::Slider::new(&mut ratio, 0.90..=0.99)
-                    .custom_formatter(|v, _| format!("{:.0}%", v * 100.0))
-                    .custom_parser(|s| {
-                        s.trim_end_matches('%')
-                            .parse::<f64>()
-                            .ok()
-                            .map(|v| v / 100.0)
-                    }),
-            );
-            if resp.changed() {
-                if let Some(p) = state.profiles.get_mut(&key) {
-                    p.band_ratio = ratio;
-                    persist_profiles(state, profiles_path);
-                } else {
-                    state.band_ratio = ratio;
-                }
-            }
-
-            // --- シフトインジケーター左端 (rev_limit に対する比率) ---
-            // 保存済みプロファイルにのみ存在する設定。
-            if let Some(lo) = state.profiles.get(&key).map(|p| p.shift_lo_ratio) {
-                ui.add_space(4.0);
-                ui.label("Shift bar left edge");
-                let mut lo = lo;
-                let resp = ui.add(
-                    egui::Slider::new(&mut lo, 0.50..=0.95)
-                        .custom_formatter(|v, _| format!("{:.0}%", v * 100.0))
-                        .custom_parser(|s| {
-                            s.trim_end_matches('%')
-                                .parse::<f64>()
-                                .ok()
-                                .map(|v| v / 100.0)
-                        }),
-                );
-                if resp.changed() {
-                    if let Some(p) = state.profiles.get_mut(&key) {
-                        p.shift_lo_ratio = lo;
-                        persist_profiles(state, profiles_path);
-                    }
-                }
             }
         });
     });
@@ -546,14 +447,6 @@ fn rev_limit_for_view(state: &AppState, key: &str) -> Option<f32> {
     match state.profiles.get(key) {
         Some(p) => p.rev_limit,
         None => state.rev_limit,
-    }
-}
-
-/// 現在の profiles を profiles.toml に保存する。
-fn persist_profiles(state: &AppState, path: &Path) {
-    match crate::state::save_profiles(path, &state.profiles) {
-        Ok(()) => log::info!("profiles saved to {}", path.display()),
-        Err(e) => log::warn!("failed to save profiles: {e}"),
     }
 }
 
