@@ -65,7 +65,7 @@ struct Config {
     input_text_pad: f32,
     /// 速度ウィジェットの単位: true = km/h, false = mph
     #[serde(default = "default_true")]
-    speed_unit_kmh: bool,
+    speed_unit_kph: bool,
     /// 横 G バーウィジェットの表示レンジ上限 (G)
     #[serde(default = "default_g_bar_max_g")]
     g_bar_max_g: f32,
@@ -117,7 +117,7 @@ impl Default for Config {
             gpu_preference: default_gpu_pref(),
             input_text_bg_alpha: default_input_text_bg_alpha(),
             input_text_pad: default_input_text_pad(),
-            speed_unit_kmh: true,
+            speed_unit_kph: true,
             g_bar_max_g: default_g_bar_max_g(),
             ignore_inward_slip: true,
             forward_enabled: false,
@@ -158,7 +158,7 @@ pub fn save_config(
     gpu_preference: &str,
     input_text_bg_alpha: u8,
     input_text_pad: f32,
-    speed_unit_kmh: bool,
+    speed_unit_kph: bool,
     g_bar_max_g: f32,
     ignore_inward_slip: bool,
     udp_port: u16,
@@ -175,7 +175,7 @@ pub fn save_config(
     cfg.gpu_preference = gpu_preference.to_string();
     cfg.input_text_bg_alpha = input_text_bg_alpha;
     cfg.input_text_pad = input_text_pad;
-    cfg.speed_unit_kmh = speed_unit_kmh;
+    cfg.speed_unit_kph = speed_unit_kph;
     cfg.g_bar_max_g = g_bar_max_g;
     cfg.ignore_inward_slip = ignore_inward_slip;
     cfg.bind = format!("0.0.0.0:{udp_port}");
@@ -640,7 +640,7 @@ fn main() -> Result<()> {
         s.gpu_preference = cfg.gpu_preference.clone();
         s.input_text_bg_alpha = cfg.input_text_bg_alpha;
         s.input_text_pad = cfg.input_text_pad;
-        s.speed_unit_kmh = cfg.speed_unit_kmh;
+        s.speed_unit_kph = cfg.speed_unit_kph;
         s.g_bar_max_g = cfg.g_bar_max_g;
         s.ignore_inward_slip = cfg.ignore_inward_slip;
         s.udp_port = cfg

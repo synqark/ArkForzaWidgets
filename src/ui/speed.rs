@@ -1,7 +1,7 @@
 //! 速度表示ウィジェット。
 //! 整数部 (3 桁・大フォント) と小数部 (2 桁・小フォント) を横並びにし、
 //! 上部に "km/h" または "mph" ラベルを表示する。
-//! 速度単位は `AppState::speed_unit_kmh` で切り替え。
+//! 速度単位は `AppState::speed_unit_kph` で切り替え。
 
 use egui::{Align2, Color32, FontFamily, FontId, Rounding, Sense, Ui, Vec2};
 
@@ -18,12 +18,12 @@ pub fn paint(ui: &mut Ui, state: &AppState, scale: Vec2) {
     let painter = ui.painter();
 
     // 速度換算
-    let speed = if state.speed_unit_kmh {
+    let speed = if state.speed_unit_kph {
         state.latest.speed_mps * 3.6
     } else {
         state.latest.speed_mps * 2.236_94
     };
-    let unit_label = if state.speed_unit_kmh { "km/h" } else { "mph" };
+    let unit_label = if state.speed_unit_kph { "km/h" } else { "mph" };
 
     let speed = speed.max(0.0);
     let int_part = speed as u32;

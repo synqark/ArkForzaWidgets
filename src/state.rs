@@ -479,7 +479,7 @@ pub struct AppState {
     /// ACC/BRK テキストウィジェットの追加パディング (px, scale=1.0 基準)
     pub input_text_pad: f32,
     /// 速度表示ウィジェットの単位: true = km/h, false = mph
-    pub speed_unit_kmh: bool,
+    pub speed_unit_kph: bool,
     /// UDP 受信ポート (変更はアプリ再起動で有効化)
     pub udp_port: u16,
     /// 受信した生パケットを他ツールへ転送するか
@@ -527,6 +527,10 @@ const DEFAULT_G_BAR_MAX_G: f32 = 4.0;
 /// 重力加速度 (m/s²)
 const GRAVITY: f32 = 9.806_65;
 
+/// km ↔ mile 換算係数 (1 mile = 1.609344 km)。
+/// ギア比 (内部は常に rpm/kph で記録) を表示単位 (kph/mph) に変換する際に使う。
+const KM_PER_MILE: f32 = 1.609_344;
+
 impl Default for AppState {
     fn default() -> Self {
         Self {
@@ -552,7 +556,7 @@ impl Default for AppState {
             last_car_pi: 0,
             input_text_bg_alpha: 107,
             input_text_pad: 6.0,
-            speed_unit_kmh: true,
+            speed_unit_kph: true,
             udp_port: 35530,
             forward_enabled: false,
             forward_target: "127.0.0.1:5300".to_string(),
@@ -603,6 +607,25 @@ impl AppState {
             return false;
         }
         true
+    }
+
+    /// ギア比 (内部は常に rpm/kph で記録・保存) を、現在選択中の速度単位に変換して返す。
+    /// mph 選択時は km↔mile 換算係数を掛ける (rpm/kph → rpm/mph)。
+    pub fn display_gear_ratio(&self, ratio_kph: f32) -> f32 {
+        if self.speed_unit_kph {
+            ratio_kph
+        } else {
+            ratio_kph * KM_PER_MILE
+        }
+    }
+
+    /// ギア比ラベルに添える単位表記 ("rpm/kph" または "rpm/mph")。
+    pub fn gear_ratio_unit_suffix(&self) -> &'static str {
+        if self.speed_unit_kph {
+            "rpm/kph"
+        } else {
+            "rpm/mph"
+        }
     }
 
     /// 現在の車/PI からプロファイルキー。車未検出 (ordinal == 0) なら None。

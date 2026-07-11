@@ -16,6 +16,8 @@
 //! `AppState::ignore_inward_slip` (既定 ON) が有効なとき、内側方向のスリップは
 //! 0 とみなす: L 側 (FL/RL) は正の `tire_slip_angle` のみ、R 側 (FR/RR) は
 //! 負の `tire_slip_angle` のみを表示に使う (逆方向の微小な振れをノイズとして無視する)。
+//! ただし完全に消すわけではなく、内側スリップが発生している間は、通常のバーとは
+//! 逆方向から伸びる灰色のバー (値によらず常に灰色) として描画する。
 
 use egui::{Align2, Color32, FontFamily, FontId, Pos2, Rect, Rounding, Sense, Stroke, Ui, Vec2};
 
@@ -34,6 +36,8 @@ const WARN_THRESHOLD: f32 = 1.0;
 const NORMAL_COLOR: Color32 = Color32::from_rgb(110, 220, 130);
 const WARN_COLOR: Color32 = Color32::from_rgb(240, 210, 80);
 const OVER_COLOR: Color32 = Color32::from_rgb(255, 80, 60);
+/// 内側方向のスリップ (無視対象) を示す灰色。値によらず常にこの色。
+const INWARD_COLOR: Color32 = Color32::from_rgb(64, 64, 64);
 
 /// L/R 側の生スリップ値に方向フィルタを適用する。
 /// `ignore_inward` が false なら単純に絶対値を返す。
@@ -50,31 +54,63 @@ fn directional_slip(raw: f32, is_left: bool, ignore_inward: bool) -> f32 {
     }
 }
 
+/// 内側方向 (`directional_slip` で無視される側) のスリップ量。
+/// `ignore_inward` が false なら常に 0 (すでに abs で両方向を含むため)。
+fn inward_slip(raw: f32, is_left: bool, ignore_inward: bool) -> f32 {
+    if !ignore_inward {
+        return 0.0;
+    }
+    directional_slip(raw, !is_left, true)
+}
+
+/// 1 輪ぶんのバー描画入力 (ラベル / 外側値 / 内側値)。
+struct BarInput<'a> {
+    label: &'a str,
+    value: f32,
+    inward: f32,
+    /// `ignore_inward_slip` が ON のときのみ内側バー (灰色) を描画する。
+    /// OFF のときは `inward` の値にかかわらず一切描画しない (従来の仕様)。
+    show_inward: bool,
+}
+
 pub fn paint_front(ui: &mut Ui, state: &AppState, scale: Vec2) {
     let angle = &state.latest.tire_slip_angle;
     let ignore_inward = state.ignore_inward_slip;
-    let left = directional_slip(angle[0], true, ignore_inward);
-    let right = directional_slip(angle[1], false, ignore_inward);
-    paint_row(ui, scale, "FL", "FR", left, right);
+    let left = BarInput {
+        label: "FL",
+        value: directional_slip(angle[0], true, ignore_inward),
+        inward: inward_slip(angle[0], true, ignore_inward),
+        show_inward: ignore_inward,
+    };
+    let right = BarInput {
+        label: "FR",
+        value: directional_slip(angle[1], false, ignore_inward),
+        inward: inward_slip(angle[1], false, ignore_inward),
+        show_inward: ignore_inward,
+    };
+    paint_row(ui, scale, left, right);
 }
 
 pub fn paint_rear(ui: &mut Ui, state: &AppState, scale: Vec2) {
     let angle = &state.latest.tire_slip_angle;
     let ignore_inward = state.ignore_inward_slip;
-    let left = directional_slip(angle[2], true, ignore_inward);
-    let right = directional_slip(angle[3], false, ignore_inward);
-    paint_row(ui, scale, "RL", "RR", left, right);
+    let left = BarInput {
+        label: "RL",
+        value: directional_slip(angle[2], true, ignore_inward),
+        inward: inward_slip(angle[2], true, ignore_inward),
+        show_inward: ignore_inward,
+    };
+    let right = BarInput {
+        label: "RR",
+        value: directional_slip(angle[3], false, ignore_inward),
+        inward: inward_slip(angle[3], false, ignore_inward),
+        show_inward: ignore_inward,
+    };
+    paint_row(ui, scale, left, right);
 }
 
 /// ラベル行 + バー行 (左右 2 本) を描画する共通処理。
-fn paint_row(
-    ui: &mut Ui,
-    scale: Vec2,
-    left_label: &str,
-    right_label: &str,
-    left_value: f32,
-    right_value: f32,
-) {
+fn paint_row(ui: &mut Ui, scale: Vec2, left: BarInput, right: BarInput) {
     let size = Vec2::new(INTRINSIC_SIZE.x * scale.x, INTRINSIC_SIZE.y * scale.y);
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     let painter = ui.painter();
@@ -110,7 +146,7 @@ fn paint_row(
     painter.text(
         Pos2::new(label_rect.left(), label_rect.center().y),
         Align2::LEFT_CENTER,
-        left_label,
+        left.label,
         font.clone(),
         Color32::from_white_alpha(210),
     );
@@ -124,7 +160,7 @@ fn paint_row(
     painter.text(
         Pos2::new(label_rect.right(), label_rect.center().y),
         Align2::RIGHT_CENTER,
-        right_label,
+        right.label,
         font,
         Color32::from_white_alpha(210),
     );
@@ -142,14 +178,40 @@ fn paint_row(
     );
 
     // 左側 (FL/RL) は中央側から外側 (右→左) へ、右側 (FR/RR) は通常 (左→右) に塗る。
-    draw_slip_bar(painter, left_rect, left_value, true, s);
-    draw_slip_bar(painter, right_rect, right_value, false, s);
+    draw_slip_bar(
+        painter,
+        left_rect,
+        left.value,
+        left.inward,
+        left.show_inward,
+        true,
+        s,
+    );
+    draw_slip_bar(
+        painter,
+        right_rect,
+        right.value,
+        right.inward,
+        right.show_inward,
+        false,
+        s,
+    );
 }
 
 /// 1 輪ぶんの水平ゲージ。0..GAUGE_MAX、0.25 刻みの小目盛り、1.00 に長い目盛り。
 /// 1.00 未満で緑、1.00 以上 GAUGE_MAX 未満で黄、GAUGE_MAX (1.25) 以上で赤。
 /// `reversed` = true のとき、右端を起点に左へ向かって塗る (左輪用)。
-fn draw_slip_bar(painter: &egui::Painter, rect: Rect, value: f32, reversed: bool, s: f32) {
+/// `show_inward` が true (= `ignore_inward_slip` ON) のときのみ、`inward_value` を
+/// 常に灰色で `reversed` とは逆方向 (内側) から描画する。false なら一切描画しない (従来の仕様)。
+fn draw_slip_bar(
+    painter: &egui::Painter,
+    rect: Rect,
+    value: f32,
+    inward_value: f32,
+    show_inward: bool,
+    reversed: bool,
+    s: f32,
+) {
     // バー背景
     painter.rect_filled(
         rect,
@@ -157,7 +219,28 @@ fn draw_slip_bar(painter: &egui::Painter, rect: Rect, value: f32, reversed: bool
         Color32::from_rgba_unmultiplied(0, 0, 0, 160),
     );
 
-    // 塗り
+    // 内側方向 (無視対象) のスリップを常に灰色で、逆方向から塗る。
+    // ignore_inward_slip が OFF のときは一切描画しない (従来の仕様)。
+    let inward_t = (inward_value / GAUGE_MAX).clamp(0.0, 1.0);
+    if show_inward && inward_t > 0.0 {
+        let inward_fill = if reversed {
+            Rect::from_min_max(
+                Pos2::new(rect.left() + 1.0 * s, rect.top() + 1.0 * s),
+                Pos2::new(
+                    rect.left() + rect.width() * inward_t,
+                    rect.bottom() - 1.0 * s,
+                ),
+            )
+        } else {
+            Rect::from_min_max(
+                Pos2::new(rect.right() - rect.width() * inward_t, rect.top() + 1.0 * s),
+                Pos2::new(rect.right() - 1.0 * s, rect.bottom() - 1.0 * s),
+            )
+        };
+        painter.rect_filled(inward_fill, Rounding::ZERO, INWARD_COLOR);
+    }
+
+    // 外側方向 (通常) のスリップを値に応じた色で塗る。
     let t = (value / GAUGE_MAX).clamp(0.0, 1.0);
     if t > 0.0 {
         let color = if value >= GAUGE_MAX {

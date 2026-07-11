@@ -209,7 +209,7 @@ fn draw_gears(ui: &Ui, rect: Rect, state: &AppState, s: f32) {
     painter.text(
         rect.left_top(),
         Align2::LEFT_TOP,
-        "GEAR RATIOS",
+        format!("GEAR RATIOS ({})", state.gear_ratio_unit_suffix()),
         title_font,
         Color32::from_white_alpha(180),
     );
@@ -259,6 +259,7 @@ fn draw_gears(ui: &Ui, rect: Rect, state: &AppState, s: f32) {
         // 未記録ギアは矩形・テキストとも非表示
         let Some(ratio) = ratio else { continue };
         any = true;
+        let ratio = state.display_gear_ratio(ratio);
 
         let col = (g as usize - 1) % COLS;
         let row = (g as usize - 1) / COLS;

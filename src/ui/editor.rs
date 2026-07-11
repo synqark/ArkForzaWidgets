@@ -56,7 +56,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, config_path: &Path, profiles_path
                     &state.gpu_preference,
                     state.input_text_bg_alpha,
                     state.input_text_pad,
-                    state.speed_unit_kmh,
+                    state.speed_unit_kph,
                     state.g_bar_max_g,
                     state.ignore_inward_slip,
                     state.udp_port,
@@ -109,6 +109,11 @@ fn overlay_section(ui: &mut Ui, state: &mut AppState) {
         &mut state.auto_hide_when_inactive,
         "Auto-hide when game is not in foreground",
     );
+    ui.horizontal(|ui| {
+        ui.label("Speed unit:");
+        ui.selectable_value(&mut state.speed_unit_kph, true, "km/h");
+        ui.selectable_value(&mut state.speed_unit_kph, false, "mph");
+    });
     let status = if state.target_in_foreground {
         "● game detected in foreground"
     } else {
@@ -315,7 +320,7 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
             // ===== 中央列: ギアごとの減速比 (rpm/車速) と最適シフト RPM =====
             let ui = &mut cols[1];
             ui.label(
-                egui::RichText::new("Gear ratios")
+                egui::RichText::new(format!("Gear ratios ({})", state.gear_ratio_unit_suffix()))
                     .size(12.0)
                     .color(Color32::from_white_alpha(200)),
             );
@@ -331,6 +336,7 @@ fn car_profile_panel(ui: &mut Ui, state: &mut AppState, profiles_path: &Path, fo
                 };
                 let Some(ratio) = ratio else { continue };
                 any = true;
+                let ratio = state.display_gear_ratio(ratio);
                 // 次ギアへの最適シフト RPM (計算できれば添える)
                 let shift = saved_profile
                     .zip(rev_limit)
@@ -612,7 +618,7 @@ fn widget_row(ui: &mut Ui, meta: &WidgetSpec, state: &mut crate::state::AppState
                 );
             });
         }
-        // Speed ウィジェット: 単位切り替え
+        // Speed ウィジェット: 背景透明度/パディング (単位は Overlay セクションで全体設定)
         if meta.id == "speed_display" {
             ui.add_space(2.0);
             ui.horizontal(|ui| {
@@ -632,12 +638,6 @@ fn widget_row(ui: &mut Ui, meta: &WidgetSpec, state: &mut crate::state::AppState
                         .fixed_decimals(1)
                         .suffix(" px"),
                 );
-            });
-            ui.add_space(2.0);
-            ui.horizontal(|ui| {
-                ui.label("Unit:");
-                ui.selectable_value(&mut state.speed_unit_kmh, true, "km/h");
-                ui.selectable_value(&mut state.speed_unit_kmh, false, "mph");
             });
         }
         // 横 G バーウィジェット: 表示レンジ (最大 G)
