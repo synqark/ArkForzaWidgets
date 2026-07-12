@@ -367,7 +367,7 @@ impl eframe::App for App {
         // bbox がディスプレイ全体を覆いそうなときは「ディスプレイ - 1px」にクランプして
         // Forza のフルスクリーンフリップ (Independent Flip / MPO) を奪わないようにする。
         let (should_show, layout_snapshot, resolution, origin) = {
-            let st = self.state.lock().unwrap();
+            let mut st = self.state.lock().unwrap();
             // 解像度の優先順位: ゲーム検出値 > プライマリディスプレイ > 1920x1080。
             let resolution = st
                 .game_resolution
@@ -378,7 +378,10 @@ impl eframe::App for App {
             // オーバーレイを表示する (位置を見ながら調整できるようにするため)。
             // overlay_enabled=false だけは尊重する。
             let settings_focused = ctx.input(|i| i.focused);
-            let should_show = st.should_show_overlay() || (settings_focused && st.overlay_enabled);
+            // Settings 非フォーカス・低速・無入力が 500ms 続いたら強制非表示にする。
+            st.update_idle_timer(settings_focused);
+            let should_show = (st.should_show_overlay() || (settings_focused && st.overlay_enabled))
+                && !st.idle_hide_active();
             (should_show, st.layout.clone(), resolution, st.game_origin)
         };
 

@@ -2,6 +2,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 
@@ -499,6 +500,9 @@ pub struct AppState {
     /// スリップインジケーター: 内側方向のスリップを 0 とみなすか (L側は＋の値のみ、R側は－の値のみ表示)。
     /// 既定 ON。設定パネルから変更可能。
     pub ignore_inward_slip: bool,
+    /// アイドル非表示条件 (Settings 非フォーカス・速度<1km/h・アクセル<1・ステアリング<1) が
+    /// 継続して成立し始めた時刻。条件が崩れたら None に戻す (シリアライズ対象外)。
+    idle_started_at: Option<Instant>,
 }
 
 /// レブリミット張り付き検出: 全開時の直近何サンプルを見るか
@@ -526,6 +530,9 @@ const DEFAULT_G_BAR_MAX_G: f32 = 4.0;
 
 /// 重力加速度 (m/s²)
 const GRAVITY: f32 = 9.806_65;
+
+/// アイドル非表示条件が成立し続けたらオーバーレイを隠すまでの継続時間。
+const IDLE_HIDE_DELAY: Duration = Duration::from_millis(500);
 
 /// km ↔ mile 換算係数 (1 mile = 1.609344 km)。
 /// ギア比 (内部は常に rpm/kph で記録) を表示単位 (kph/mph) に変換する際に使う。
@@ -565,6 +572,7 @@ impl Default for AppState {
             accel_ema_init: false,
             g_bar_max_g: DEFAULT_G_BAR_MAX_G,
             ignore_inward_slip: true,
+            idle_started_at: None,
         }
     }
 }
@@ -607,6 +615,26 @@ impl AppState {
             return false;
         }
         true
+    }
+
+    /// アイドル非表示タイマーを更新する。毎フレーム呼ぶこと。
+    /// 「アイドル」= Settings ウィンドウが非フォーカス かつ 速度<1km/h かつアクセル<0.01 (0..=1 正規化) 
+    /// この状態が `IDLE_HIDE_DELAY` 以上続くと `idle_hide_active()` が true を返すようになる。
+    pub fn update_idle_timer(&mut self, settings_focused: bool) {
+        let idle_now = !settings_focused
+            && self.latest.speed_kph() < 1.0
+            && self.latest.accel < 0.01;
+        match (idle_now, self.idle_started_at) {
+            (true, None) => self.idle_started_at = Some(Instant::now()),
+            (false, Some(_)) => self.idle_started_at = None,
+            _ => {}
+        }
+    }
+
+    /// アイドル非表示条件が `IDLE_HIDE_DELAY` 以上継続しているか (=強制非表示すべきか)。
+    pub fn idle_hide_active(&self) -> bool {
+        self.idle_started_at
+            .is_some_and(|t| t.elapsed() >= IDLE_HIDE_DELAY)
     }
 
     /// ギア比 (内部は常に rpm/kph で記録・保存) を、現在選択中の速度単位に変換して返す。
